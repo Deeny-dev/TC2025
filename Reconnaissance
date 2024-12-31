@@ -1,3 +1,4 @@
+import argparse
 import nmap
 import json
 
@@ -39,81 +40,38 @@ def service_version_detection(target):
                 print(f"Port: {port} | Service: {nm[host][proto][port]['name']} | Version: {nm[host][proto][port]['version']}")
     return nm
 
-# OS Detection
-def os_detection(target):
-    print(f"Detecting OS for {target}...")
-    nm = nmap.PortScanner()
-    nm.scan(target, arguments='-O')  # OS detection
-    for host in nm.all_hosts():
-        if 'osmatch' in nm[host]:
-            print(f"Host: {host} | OS: {nm[host]['osmatch'][0]['name']}")
-        else:
-            print(f"Host: {host} | OS detection failed")
-    return nm
-
-# Timing and Performance Adjustment
-def timing_scan(target):
-    print(f"Running a timing and performance scan on {target}...")
-    nm = nmap.PortScanner()
-    nm.scan(target, arguments='-T4')  # Timing template (4 is aggressive)
-    print(f"Scan results for {target}: {nm.all_hosts()}")
-    return nm
-
-# Firewall/IDS/IPS Evasion and Spoofing
-def evasion_and_spoofing(target):
-    print(f"Attempting evasion on {target}...")
-    nm = nmap.PortScanner()
-    nm.scan(target, arguments='--data-length 25 --source-port 53')  # Spoof source port to 53 (DNS)
-    print(f"Scan results for {target}: {nm.all_hosts()}")
-    return nm
-
-# Aggressive Scanning
-def aggressive_scan(target):
-    print(f"Running aggressive scan on {target}...")
-    nm = nmap.PortScanner()
-    nm.scan(target, arguments='-A')  # Aggressive scan (-A includes OS, version detection, traceroute)
-    for host in nm.all_hosts():
-        print(f"Host: {host} ({nm[host].hostname() if nm[host].hostname() else 'No hostname'})")
-        print(f"OS: {nm[host].get('osmatch', 'OS not detected')}")
-        print(f"Service Versions: {nm[host].get('hostnames', 'No hostnames found')}")
-        for proto in nm[host].all_protocols():
-            lport = nm[host][proto].keys()
-            for port in lport:
-                print(f"Port: {port}\tState: {nm[host][proto][port]['state']}")
-    return nm
-
-# Output Options
-def save_output(scan_results, output_file="scan_results.json"):
-    print(f"Saving output to {output_file}...")
-    with open(output_file, "w") as file:
-        json.dump(scan_results, file, indent=4)
-
-# Main function to run all tests
-def main(target):
-    print(f"Starting scan for {target}...\n")
+# Main function that maps commands
+def main():
+    # Initialize the argument parser
+    parser = argparse.ArgumentParser(description="Network scanning tool")
     
-    hosts = discover_hosts(target)
-    if not hosts:
-        print("No hosts found. Exiting...")
-        return
+    # Add commands (subcommands)
+    subparsers = parser.add_subparsers(dest='command')
 
-    all_results = {}
+    # Host Discovery Command
+    subparsers.add_parser('network', help="Discover active hosts in a network")
+    
+    # Port Scanning Command
+    port_parser = subparsers.add_parser('scan', help="Scan specific ports")
+    port_parser.add_argument('target', help="Target IP or range to scan")
+    port_parser.add_argument('ports', help="Port range to scan (e.g., 1-1024, 80, 443)")
 
-    for host in hosts:
-        print(f"\nScanning host: {host}")
-        scan_results = {}
-        scan_results['ports'] = scan_ports(host, '1-1024')
-        scan_results['service_versions'] = service_version_detection(host)
-        scan_results['os'] = os_detection(host)
-        scan_results['timing'] = timing_scan(host)
-        scan_results['evasion'] = evasion_and_spoofing(host)
-        scan_results['aggressive'] = aggressive_scan(host)
-        
-        all_results[host] = scan_results
-        
-        save_output(all_results)
+    # Service Version Detection Command
+    subparsers.add_parser('service', help="Detect service versions on open ports")
+    
+    # Parse the arguments
+    args = parser.parse_args()
 
-# Example Usage
+    # Command handling based on the input
+    if args.command == 'network':
+        target = input("Enter the network or IP range (e.g., 192.168.1.0/24): ")
+        discover_hosts(target)
+    elif args.command == 'scan':
+        scan_ports(args.target, args.ports)
+    elif args.command == 'service':
+        service_version_detection(args.target)
+    else:
+        parser.print_help()
+
 if __name__ == "__main__":
-    target = "192.168.1.0/24"  # Replace with your target range or IP
-    main(target)
+    main()
