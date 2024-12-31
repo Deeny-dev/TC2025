@@ -116,4 +116,4 @@ def main(target):
 # Example Usage
 if __name__ == "__main__":
     target = "192.168.1.0/24"  # Replace with your target range or IP
-    main(target
+    main(target)
