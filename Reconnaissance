@@ -1,79 +1,102 @@
+from scapy.all import ICMP, IP, TCP, sr1
+
+# 1. Host Discovery
+def discover_hosts(network):
+    for i in range(1, 255):
+        ip = f"{network}.{i}"
+        packet = IP(dst=ip)/ICMP()
+        response = sr1(packet, timeout=1, verbose=0)
+        if response:
+            print(f"Host {ip} is live")
+
+discover_hosts("192.168.1")
 
 
-import argparse
-import nmap
-import json
+# 2. Scan Techniques
 
-# Host Discovery
-def discover_hosts(target):
-    print(f"Scanning {target} for active hosts...")
-    nm = nmap.PortScanner()
-    nm.scan(hosts=target, arguments='-sn')  # Ping scan
-    hosts = nm.all_hosts()
-    print(f"Found active hosts: {hosts}")
-    return hosts
+# Example of SYN Scan (Half-open scan)
+def syn_scan(target_ip, target_port):
+    packet = IP(dst=target_ip)/TCP(dport=target_port, flags="S")
+    response = sr1(packet, timeout=1, verbose=0)
+    if response and response.haslayer(TCP) and response.getlayer(TCP).flags == 18:
+        print(f"Port {target_port} is open on {target_ip}")
 
-# Port Scanning
-def scan_ports(target, ports):
-    print(f"Scanning ports on {target}...")
-    nm = nmap.PortScanner()
-    nm.scan(target, ports)
-    for host in nm.all_hosts():
-        print(f"Host: {host} ({nm[host].hostname() if nm[host].hostname() else 'No hostname'})")
-        print(f"State: {nm[host].state()}")
-        for proto in nm[host].all_protocols():
-            print(f"Protocol: {proto}")
-            lport = nm[host][proto].keys()
-            for port in lport:
-                print(f"Port: {port}\tState: {nm[host][proto][port]['state']}")
-    return nm
+syn_scan("192.168.1.1", 80)
 
-# Service Version Detection
-def service_version_detection(target):
-    print(f"Scanning service versions on {target}...")
-    nm = nmap.PortScanner()
-    nm.scan(target, arguments='-sV')  # Service version detection
-    for host in nm.all_hosts():
-        print(f"Host: {host} ({nm[host].hostname() if nm[host].hostname() else 'No hostname'})")
-        for proto in nm[host].all_protocols():
-            print(f"Protocol: {proto}")
-            lport = nm[host][proto].keys()
-            for port in lport:
-                print(f"Port: {port} | Service: {nm[host][proto][port]['name']} | Version: {nm[host][proto][port]['version']}")
-    return nm
 
-# Main function that maps commands
-def main():
-    # Initialize the argument parser
-    parser = argparse.ArgumentParser(description="Network scanning tool")
-    
-    # Add commands (subcommands)
-    subparsers = parser.add_subparsers(dest='command')
+# 3. Port Specification and Scan Order
+ports = [22, 80, 443, 8080]
 
-    # Host Discovery Command
-    subparsers.add_parser('network', help="Discover active hosts in a network")
-    
-    # Port Scanning Command
-    port_parser = subparsers.add_parser('scan', help="Scan specific ports")
-    port_parser.add_argument('target', help="Target IP or range to scan")
-    port_parser.add_argument('ports', help="Port range to scan (e.g., 1-1024, 80, 443)")
+def scan_ports(target_ip):
+    for port in ports:
+        syn_scan(target_ip, port)
 
-    # Service Version Detection Command
-    subparsers.add_parser('service', help="Detect service versions on open ports")
-    
-    # Parse the arguments
-    args = parser.parse_args()
+scan_ports("192.168.1.1")
 
-    # Command handling based on the input
-    if args.command == 'network':
-        target = input("Enter the network or IP range (e.g., 192.168.1.0/24): ")
-        discover_hosts(target)
-    elif args.command == 'scan':
-        scan_ports(args.target, args.ports)
-    elif args.command == 'service':
-        service_version_detection(args.target)
+
+# 4. Service or Version Detection
+def detect_service(target_ip, target_port):
+    packet = IP(dst=target_ip)/TCP(dport=target_port, flags="S")
+    response = sr1(packet, timeout=1, verbose=0)
+    if response and response.haslayer(TCP):
+        print(f"Service detected on {target_ip}:{target_port}")
+
+detect_service("192.168.1.1", 80)
+
+
+# 5. Script Scan (Using advanced or custom scripts)
+# Example: Create a function to check multiple ports or services by modifying the above examples or integrating existing scripts.
+
+# 6. OS Detection (Using TCP/IP fingerprinting)
+def os_detection(target_ip):
+    packet = IP(dst=target_ip)/TCP(dport=80, flags="S")
+    response = sr1(packet, timeout=1, verbose=0)
+    if response:
+        ttl = response.ttl
+        if ttl <= 64:
+            print(f"Possibly Linux or Unix OS on {target_ip}")
+        elif ttl > 64:
+            print(f"Possibly Windows OS on {target_ip}")
+
+os_detection("192.168.1.1")
+
+
+# 7. Timing and Performance (Adjusting scan timing)
+def timed_scan(target_ip, target_port):
+    packet = IP(dst=target_ip)/TCP(dport=target_port, flags="S")
+    response = sr1(packet, timeout=2, verbose=0)  # 2-second timeout
+    if response:
+        print(f"Port {target_port} on {target_ip} is open.")
+
+timed_scan("192.168.1.1", 80)
+
+
+# 8. Evasion and Spoofing (Source IP Spoofing)
+def spoof_scan(target_ip, spoof_ip, target_port):
+    packet = IP(src=spoof_ip, dst=target_ip)/TCP(dport=target_port, flags="S")
+    response = sr1(packet, timeout=1, verbose=0)
+    if response:
+        print(f"Port {target_port} is open on {target_ip} (spoofed IP {spoof_ip})")
+
+spoof_scan("192.168.1.1", "192.168.1.100", 80)
+
+
+# 9. Output (Capturing and printing results)
+def scan_and_output(target_ip, target_port):
+    packet = IP(dst=target_ip)/TCP(dport=target_port, flags="S")
+    response = sr1(packet, timeout=1, verbose=0)
+    if response:
+        print(f"Port {target_port} is open on {target_ip}")
     else:
-        parser.print_help()
+        print(f"Port {target_port} is closed on {target_ip}")
 
-if __name__ == "__main__":
-    main()
+scan_and_output("192.168.1.1", 80)
+
+
+# 10. Target Specification (Scanning multiple targets)
+def scan_multiple_targets(target_ips):
+    for target_ip in target_ips:
+        for port in range(20, 25):
+            scan_and_output(target_ip, port)
+
+scan_multiple_targets(["192.168.1.1", "192.168.1.2"]
