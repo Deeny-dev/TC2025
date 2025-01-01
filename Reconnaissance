@@ -100,3 +100,93 @@ def scan_multiple_targets(target_ips):
             scan_and_output(target_ip, port)
 
 scan_multiple_targets(["192.168.1.1", "192.168.1.2"]
+
+from scapy.all import *
+
+# Utility functions
+
+def ping_scan(target):
+    print(f"[+] Performing Ping Scan on {target}")
+    pkt = IP(dst=target)/ICMP()
+    response = sr1(pkt, timeout=1, verbose=0)
+    if response:
+        print(f"Host {target} is up.")
+    else:
+        print(f"Host {target} is down.")
+
+def tcp_ack_scan(target, port):
+    print(f"[+] Performing TCP ACK Scan on {target}:{port}")
+    pkt = IP(dst=target)/TCP(dport=port, flags="A")
+    response = sr1(pkt, timeout=1, verbose=0)
+    if response:
+        print(f"Response received: {response.summary()}")
+    else:
+        print(f"No response from {target}:{port}")
+
+def tcp_syn_scan(target, port):
+    print(f"[+] Performing TCP SYN Scan on {target}:{port}")
+    pkt = IP(dst=target)/TCP(dport=port, flags="S")
+    response = sr1(pkt, timeout=1, verbose=0)
+    if response:
+        if response.haslayer(TCP) and response[TCP].flags == 0x12:
+            print(f"Port {port} on {target} is open.")
+        elif response.haslayer(TCP) and response[TCP].flags == 0x14:
+            print(f"Port {port} on {target} is closed.")
+        else:
+            print(f"Unexpected response: {response.summary()}")
+    else:
+        print(f"No response from {target}:{port}")
+
+def udp_scan(target, port):
+    print(f"[+] Performing UDP Scan on {target}:{port}")
+    pkt = IP(dst=target)/UDP(dport=port)/Raw(load="\x00")
+    response = sr1(pkt, timeout=2, verbose=0)
+    if response:
+        if response.haslayer(ICMP):
+            print(f"Port {port} on {target} is closed.")
+        else:
+            print(f"Port {port} on {target} is open/filtered.")
+    else:
+        print(f"No response from {target}:{port}")
+
+def traceroute_scan(target):
+    print(f"[+] Performing Traceroute Scan to {target}")
+    traceroute(target, verbose=0)
+
+# Menu-driven tool
+
+def network_scanner():
+    print("\n[+] Welcome to the Network Scanner using Scapy")
+    print("1. Host Discovery Scans")
+    print("2. Port Scanning")
+    print("3. Traceroute Scan")
+    print("0. Exit")
+
+    choice = input("Select an option: ")
+
+    if choice == "1":
+        target = input("Enter target IP: ")
+        ping_scan(target)
+    elif choice == "2":
+        target = input("Enter target IP: ")
+        port = int(input("Enter port to scan: "))
+        scan_type = input("Select scan type (ack/syn/udp): ")
+        if scan_type == "ack":
+            tcp_ack_scan(target, port)
+        elif scan_type == "syn":
+            tcp_syn_scan(target, port)
+        elif scan_type == "udp":
+            udp_scan(target, port)
+        else:
+            print("Invalid scan type selected.")
+    elif choice == "3":
+        target = input("Enter target IP: ")
+        traceroute_scan(target)
+    elif choice == "0":
+        print("Exiting...")
+    else:
+        print("Invalid choice. Try again.")
+
+if __name__ == "__main__":
+    while True:
+        network_scanner()
